@@ -1,0 +1,233 @@
+<html>
+  <head>
+    <title>Mapa correspondiente a i6687129 e i1080834</title>
+
+    <script type="text/javascript">
+    <!--
+      var river=[20,0,5, 40,0,2, 20,1,6, 40,1,2, 21,2,5, 40,2,2, 22,3,5, 39,3,2, 22,4,4, 38,4,2, 23,5,3, 36,5,3, 25,6,3, 35,6,3, 26,7,3, 33,7,3, 27,8,4, 32,8,3, 29,9,5, 29,10,4, 28,11,4, 26,12,4, 25,13,4, 23,14,7, 22,15,8, 22,16,8]
+      var segments=[
+        {x0: 0,y0: 0,x1:16,y1: 0},  {x0:16,y0: 0,x1:36,y1: 0},
+        {x0:36,y0: 0,x1:54,y1: 0},  {x0:54,y0: 0,x1:68,y1: 0},
+        {x0:68,y0: 0,x1:74,y1: 0},  {x0: 0,y0: 4,x1:16,y1: 4},
+        {x0:16,y0: 7,x1:36,y1: 7},  {x0:36,y0: 7,x1:54,y1: 7},
+        {x0:54,y0: 7,x1:68,y1: 7},  {x0:68,y0: 7,x1:74,y1: 7},
+        {x0: 0,y0: 9,x1:16,y1: 9},  {x0: 0,y0:12,x1:16,y1:12},
+        {x0:16,y0:12,x1:36,y1:12},  {x0:36,y0:12,x1:54,y1:12},
+        {x0:54,y0:12,x1:68,y1:12},  {x0:68,y0:12,x1:74,y1:12},
+        {x0: 0,y0:16,x1:16,y1:16},  {x0:16,y0:16,x1:36,y1:16},
+        {x0:36,y0:16,x1:54,y1:16},  {x0:54,y0:16,x1:68,y1:16},
+        {x0:68,y0:16,x1:74,y1:16},  {x0: 0,y0: 4,x1: 0,y1: 9},
+        {x0: 0,y0: 9,x1: 0,y1:12},  {x0: 0,y0:12,x1: 0,y1:16},
+        {x0:16,y0: 0,x1:16,y1: 4},  {x0:16,y0: 4,x1:16,y1: 7},
+        {x0:16,y0: 7,x1:16,y1: 9},  {x0:16,y0: 9,x1:16,y1:12},
+        {x0:16,y0:12,x1:16,y1:16},  {x0:36,y0: 0,x1:36,y1: 7},
+        {x0:36,y0: 7,x1:36,y1:12},  {x0:36,y0:12,x1:36,y1:16},
+        {x0:54,y0: 0,x1:54,y1: 7},  {x0:54,y0: 7,x1:54,y1:12},
+        {x0:54,y0:12,x1:54,y1:16},  {x0:68,y0: 0,x1:68,y1: 7},
+        {x0:68,y0: 7,x1:68,y1:12},  {x0:68,y0:12,x1:68,y1:16},
+        {x0:74,y0: 0,x1:74,y1: 7},  {x0:74,y0: 7,x1:74,y1:12},
+        {x0:74,y0:12,x1:74,y1:16}
+                    ]
+      var present=[1,2,2,2,2,2,1,1,1,1,2,1,1,1,0,0,1,1,2,2,2,1,1,1,1,1,1,2,1,2,2,2,2,2,1,2,1,1,2,1,1]
+
+      var crossings=[]
+      function setEast(x,y)  {crossings[x+100*y]=(crossings[x+100*y]|1)}
+      function setSouth(x,y) {crossings[x+100*y]=(crossings[x+100*y]|2)}
+      function setWest(x,y)  {crossings[x+100*y]=(crossings[x+100*y]|4)}
+      function setNorth(x,y) {crossings[x+100*y]=(crossings[x+100*y]|8)}
+      function isEast(x)  {return (x&1)!=0}
+      function isSouth(x) {return (x&2)!=0}
+      function isWest(x)  {return (x&4)!=0}
+      function isNorth(x) {return (x&8)!=0}
+      function isStraight(x)
+       {return isEast(x) &&  isWest(x) && !isSouth(x) && !isNorth(x) ||
+              !isEast(x) && !isWest(x) &&  isSouth(x) &&  isNorth(x)}
+      function isCorner(x)
+       {return !isStraight(x) && isEast(x)+isWest(x)+isSouth(x)+isNorth(x)==2;}
+      // Populate crossings
+      for (var i=0; i<segments.length; ++i)
+       {if (!present[i]) continue
+        crossings[segments[i].x0+100*segments[i].y0]=0
+        crossings[segments[i].x1+100*segments[i].y1]=0}
+      // Now directions E=1, S=2, W=4, N=8
+      for (var i=0; i<segments.length; ++i)
+       {if (!present[i]) continue
+        if (segments[i].x0!=segments[i].x1) // Horizontal
+         {setEast(segments[i].x0,segments[i].y0)
+          setWest(segments[i].x1,segments[i].y1)}
+        else
+         {setSouth(segments[i].x0,segments[i].y0)
+          setNorth(segments[i].x1,segments[i].y1)}
+        }
+
+      var lineSeparation=16
+      var charSeparation
+      sharpFont='bold 16px Courier'
+      function getX(x) {return 60+x*charSeparation}
+      function getY(y) {return 40+y*lineSeparation}
+
+      function drawSharpLine(ctx,x0,y0,x1,y1)
+       {ctx.font=sharpFont
+        if (y0==y1)
+          for (var i=x0;i<=x1;++i) ctx.fillText('#',getX(i),getY(y0))
+        else
+          for (var i=y0;i<=y1;++i) ctx.fillText('#',getX(x0),getY(i))
+        }
+
+      function drawSegments(ctx)
+       {for (var i=0; i<segments.length; ++i)
+          if (present[i])
+            drawSharpLine(ctx,segments[i].x0, segments[i].y0,
+                              segments[i].x1, segments[i].y1)
+        }
+
+      function drawWaterLine(ctx,x,y,l)
+       {for (var ii=x;ii<x+l;++ii) ctx.fillText('*',getX(ii),getY(y))}
+      function drawRiver(ctx)
+       {ctx.font=sharpFont
+        oldFillStyle=ctx.fillStyle
+        ctx.fillStyle='cornflowerblue'
+        for (var i=0; i<river.length; i=i+3)
+          drawWaterLine(ctx,river[i],river[i+1],river[i+2])
+        ctx.fillStyle=oldFillStyle}
+
+      function drawLabels(ctx)
+       {ctx.font='12px Times'
+        oldFillStyle=ctx.fillStyle; oldTextAlign=ctx.textAlign;
+        ctx.fillStyle='red'
+        var j=0
+        for (var i=0; i<crossings.length; ++i)
+          if (crossings[i]!==undefined)
+           {var x=i%100; var y=Math.floor(i/100)
+            //alert('('+x+','+y+')'+crossings[i])
+            if (isStraight(crossings[i]) || isCorner(crossings[i])) continue
+            var text='C'+j+'('+x+','+y+')'; ++j
+            if (!isEast(crossings[i]))
+              {ctx.textAlign='left'
+               ctx.fillText(text,getX(x)+charSeparation+2,getY(y))
+               continue}
+            if (!isWest(crossings[i]))
+              {ctx.textAlign='right'
+               ctx.fillText(text,getX(x)-2,getY(y))
+               continue}
+            if (!isNorth(crossings[i]))
+              {ctx.textAlign='center'
+               ctx.fillText(text,getX(x)+charSeparation/2,
+                                 getY(y)-lineSeparation)
+               continue}
+            if (!isSouth(crossings[i]))
+              {ctx.textAlign='center'
+               ctx.fillText(text,getX(x)+charSeparation/2,
+                                 getY(y)+lineSeparation)
+               continue}
+            ctx.textAlign='left'
+            ctx.fillText(text,getX(x)+charSeparation+2,getY(y)-lineSeparation)
+            }
+        ctx.fillStyle=oldFillStyle; ctx.textAlign=oldTextAlign}
+
+      function drawHorizontalArrow(ctx,x0,x1,y,type)
+       {if (!type) return
+        var oldStrokeStyle=ctx.strokeStyle
+        var midPoint=getX((x0+x1)/2.0)
+        for (i=0; i<2; ++i)
+         {ctx.strokeStyle=['bisque','chocolate'][i]
+          ctx.lineWidth=6-i*3
+          ctx.moveTo(midPoint-20+charSeparation/2.0,getY(y)-lineSeparation/3.0)
+          ctx.lineTo(midPoint+20+charSeparation/2.0,getY(y)-lineSeparation/3.0)
+          ctx.stroke()
+          if (type & 1) // From left to right
+           {ctx.moveTo(midPoint+20+charSeparation/2.0,getY(y)-lineSeparation/3.0)
+            ctx.lineTo(midPoint+7+charSeparation/2.0,getY(y)-lineSeparation/3.0+4)
+            ctx.moveTo(midPoint+20+charSeparation/2.0,getY(y)-lineSeparation/3.0)
+            ctx.lineTo(midPoint+7+charSeparation/2.0,getY(y)-lineSeparation/3.0-4)
+            ctx.stroke()}
+          if (type & 2) // From right to left
+           {ctx.moveTo(midPoint-20+charSeparation/2.0,getY(y)-lineSeparation/3.0)
+            ctx.lineTo(midPoint-7+charSeparation/2.0,getY(y)-lineSeparation/3.0+4)
+            ctx.moveTo(midPoint-20+charSeparation/2.0,getY(y)-lineSeparation/3.0)
+            ctx.lineTo(midPoint-7+charSeparation/2.0,getY(y)-lineSeparation/3.0-4)
+            ctx.stroke()}
+          }
+        ctx.strokeStyle=oldStrokeStyle}
+      function drawVerticalArrow(ctx,y0,y1,x,type)
+       {if (!type) return
+        var oldStrokeStyle=ctx.strokeStyle
+        var midPoint=getY((y0+y1)/2.0)
+        for (i=0; i<2; ++i)
+         {ctx.strokeStyle=['bisque','chocolate'][i]
+          ctx.lineWidth=6-i*3
+          ctx.moveTo(getX(x)+charSeparation/2.0,midPoint-lineSeparation/3.0-17)
+          ctx.lineTo(getX(x)+charSeparation/2.0,midPoint-lineSeparation/3.0+17)
+          ctx.stroke()
+          if (type & 1) // From up to down
+           {ctx.moveTo(getX(x)+charSeparation/2.0,midPoint-lineSeparation/3.0+17)
+            ctx.lineTo(getX(x)+charSeparation/2.0+4,midPoint-lineSeparation/3.0+6)
+            ctx.moveTo(getX(x)+charSeparation/2.0,midPoint-lineSeparation/3.0+17)
+            ctx.lineTo(getX(x)+charSeparation/2.0-4,midPoint-lineSeparation/3.0+6)
+            ctx.stroke()}
+          if (type & 2) // From down to up
+           {ctx.moveTo(getX(x)+charSeparation/2.0,midPoint-lineSeparation/3.0-17)
+            ctx.lineTo(getX(x)+charSeparation/2.0+4,midPoint-lineSeparation/3.0-6)
+            ctx.moveTo(getX(x)+charSeparation/2.0,midPoint-lineSeparation/3.0-17)
+            ctx.lineTo(getX(x)+charSeparation/2.0-4,midPoint-lineSeparation/3.0-6)
+            ctx.stroke()}
+          }
+        ctx.strokeStyle=oldStrokeStyle}
+      function drawArrows(ctx)
+       {var thereIsOldZone=false; var beg,end,y,type;
+        for (var i=0;i<segments.length;++i)
+         {if (segments[i].x0 == segments[i].x1) continue;  // Vertical segment
+          if (!thereIsOldZone)
+           {beg=segments[i].x0; end=segments[i].x1; y=segments[i].y0; type=present[i];
+            thereIsOldZone=true; continue}
+          if (type==present[i] && y==segments[i].y0 &&
+              crossings[segments[i].x0+100*y]!==undefined &&
+              isStraight(crossings[segments[i].x0+100*y]))
+           {end=segments[i].x1; continue}
+          if (type) drawHorizontalArrow(ctx,beg,end,y,type)
+          beg=segments[i].x0; end=segments[i].x1; y=segments[i].y0; type=present[i]}
+        if (type) drawHorizontalArrow(ctx,beg,end,y,type)
+
+        thereIsOldZone=false; var x;
+        for (var i=0;i<segments.length;++i)
+         {if (segments[i].y0 == segments[i].y1) continue;  // Horizontal segment
+          if (!thereIsOldZone)
+           {beg=segments[i].y0; end=segments[i].y1; x=segments[i].x0; type=present[i];
+            thereIsOldZone=true; continue}
+          if (type==present[i] && x==segments[i].x0 &&
+              crossings[x+100*segments[i].y0]!==undefined &&
+              isStraight(crossings[x+100*segments[i].y0]))
+           {end=segments[i].y1; continue}
+          if (type) drawVerticalArrow(ctx,beg,end,x,type)
+          beg=segments[i].y0; end=segments[i].y1; x=segments[i].x0; type=present[i]}
+        if (type) drawVerticalArrow(ctx,beg,end,x,type)
+        }
+    -->
+    </script>
+
+  </head>
+  <body>
+    <h2><center>Mapa correspondiente a i6687129 e i1080834</center></h2>
+    <center>
+      <canvas id="mapa" style="border:1px solid #000000;"
+              width="880" height="330"/>
+    </center>
+
+    <script type="text/javascript">
+    <!--
+      var ctx = document.getElementById('mapa').getContext('2d')
+      ctx.font=sharpFont
+      charSeparation=ctx.measureText('#').width
+      drawRiver(ctx)
+      drawSegments(ctx)
+      drawLabels(ctx)
+      drawArrows(ctx)
+    -->
+    </script>
+    <script src="analisis.js"/></script>
+
+    <br/>
+    <hr/>
+    &copy; 2015 Guillermo Gonz&aacute;lez Talav&aacute;n
+  </body>
+</html>

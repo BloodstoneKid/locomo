@@ -73,20 +73,29 @@ int main(int argc, char *argv[]){
             if(!fork()){
                 struct mensaje msg;
                 msg.tipo=TIPO_TRENNUEVO;
-                msgsnd(buzon,&msg,sizeof(struct mensaje),IPC_NOWAIT);
+                msgsnd(buzon,&msg,sizeof(struct mensaje)-sizeof(long),IPC_NOWAIT);
                 msgrcv(buzon,&msg,sizeof(struct mensaje),TIPO_RESPTRENNUEVO,1);
                 tren[i].ntren=msg.tren;
-                printf("\n%d",tren[i].ntren);
+                printf("\n%d\n",tren[i].ntren);
                 msg.tipo=TIPO_GUARDAPID;
                 msg.tren=getpid();
-                msgsnd(buzon,&msg,sizeof(struct mensaje),IPC_NOWAIT);
+                msgsnd(buzon,&msg,sizeof(struct mensaje)-sizeof(long),IPC_NOWAIT);
+                msg.tren = tren[i].ntren;
+                msg.tipo=TIPO_PETAVANCE;
+                msgsnd(buzon,&msg,sizeof(struct mensaje)-sizeof(long),IPC_NOWAIT);
+                msgrcv(buzon,&msg,sizeof(struct mensaje),TIPO_RESPPETAVANCETREN0,1);
+                int oldY = msg.y;
+                msg.tipo=TIPO_AVANCE;
+                msgsnd(buzon,&msg,sizeof(struct mensaje)-sizeof(long),IPC_NOWAIT);
+                msgrcv(buzon,&msg,sizeof(struct mensaje),TIPO_RESPAVANCETREN0,1);
+                LOMO_espera(oldY,msg.y);
             }else{
                 struct mensaje msg;
                 msgrcv(buzon,&msg,sizeof(struct mensaje),TIPO_GUARDAPID,1);
                 tren[i].pid=msg.tren;
             }
             }
-
+	//sleep(8);
             LOMO_fin();
             for(int i=0; i<nTrenes; i++){
                 kill(tren[i].pid,SIGTERM);

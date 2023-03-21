@@ -65,7 +65,9 @@ int main(int argc, char *argv[]){
 
 			key_t clave = ftok(argv[0],'G');
 			semaforo = semget(clave,1,IPC_CREAT | 0600);
+            if(semaforo==-1) perror("crear semaforo");
 			buzon = msgget(clave,IPC_CREAT);
+            if(buzon==-1) perror("crear buzon");
             
 			
 			LOMO_inicio(*argv[1],semaforo,buzon,LOGIN1,LOGIN2);
@@ -73,29 +75,32 @@ int main(int argc, char *argv[]){
             if(!fork()){
                 struct mensaje msg;
                 msg.tipo=TIPO_TRENNUEVO;
-                msgsnd(buzon,&msg,sizeof(struct mensaje)-sizeof(long),IPC_NOWAIT);
-                msgrcv(buzon,&msg,sizeof(struct mensaje),TIPO_RESPTRENNUEVO,1);
+                if(msgsnd(buzon,&msg,sizeof(struct mensaje),IPC_NOWAIT)!=0) perror("buzon snd 1");
+                if(msgrcv(buzon,&msg,sizeof(struct mensaje),TIPO_RESPTRENNUEVO,1)!=0) perror("buzon rcv 1");
+                
                 tren[i].ntren=msg.tren;
                 printf("\n%d\n",tren[i].ntren);
                 msg.tipo=TIPO_GUARDAPID;
                 msg.tren=getpid();
-                msgsnd(buzon,&msg,sizeof(struct mensaje)-sizeof(long),IPC_NOWAIT);
+                if(msgsnd(buzon,&msg,sizeof(struct mensaje),IPC_NOWAIT)!=0) perror("buzon snd 2");
                 msg.tren = tren[i].ntren;
+                while(1){
                 msg.tipo=TIPO_PETAVANCE;
-                msgsnd(buzon,&msg,sizeof(struct mensaje)-sizeof(long),IPC_NOWAIT);
-                msgrcv(buzon,&msg,sizeof(struct mensaje),TIPO_RESPPETAVANCETREN0,1);
+                if(msgsnd(buzon,&msg,sizeof(struct mensaje),IPC_NOWAIT)!=0) perror("buzon snd 3");
+                if(msgrcv(buzon,&msg,sizeof(struct mensaje),TIPO_RESPPETAVANCETREN0,1)!=0) perror("buzon rcv 3");
                 int oldY = msg.y;
                 msg.tipo=TIPO_AVANCE;
-                msgsnd(buzon,&msg,sizeof(struct mensaje)-sizeof(long),IPC_NOWAIT);
-                msgrcv(buzon,&msg,sizeof(struct mensaje),TIPO_RESPAVANCETREN0,1);
+                if( msgsnd(buzon,&msg,sizeof(struct mensaje),IPC_NOWAIT)!=0) perror("buzon snd 4");
+                if(msgrcv(buzon,&msg,sizeof(struct mensaje),TIPO_RESPAVANCETREN0,1)!=0) perror("buzon rcv 4");
                 LOMO_espera(oldY,msg.y);
+                sleep(1);
+                }
             }else{
                 struct mensaje msg;
-                msgrcv(buzon,&msg,sizeof(struct mensaje),TIPO_GUARDAPID,1);
+                if(msgrcv(buzon,&msg,sizeof(struct mensaje),TIPO_GUARDAPID,1)!=0) perror("buzon rcv 2");
                 tren[i].pid=msg.tren;
             }
             }
-	//sleep(8);
             LOMO_fin();
             for(int i=0; i<nTrenes; i++){
                 kill(tren[i].pid,SIGTERM);

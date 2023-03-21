@@ -79,9 +79,9 @@ int main(int argc, char *argv[]){
             
 			
 			LOMO_inicio(*argv[1],semaforo[0],buzon,LOGIN1,LOGIN2);
+	struct mensaje msg;
             for(int i=0; i<nTrenes; i++){
             if(!fork()){
-                struct mensaje msg;
                 msg.tipo=TIPO_TRENNUEVO;
                 if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT)!=0) perror("buzon snd 1");
                 if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_RESPTRENNUEVO,1)==0) perror("buzon rcv 1");
@@ -91,28 +91,28 @@ int main(int argc, char *argv[]){
                 msg.tren=getpid();
                 if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT)!=0) perror("buzon snd 2");
 
-                while(1){
-                msg.tipo=TIPO_PETAVANCE;
-                msg.tren = tren[i].ntren;
-                if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT)!=0) perror("buzon snd 3");
-                if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_RESPPETAVANCETREN0,1)==0) perror("buzon rcv 3");
-                int oldY = msg.y;
-
-                msg.tipo=TIPO_AVANCE;
-                if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT)!=0) perror("buzon snd 4");
-                if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_RESPAVANCETREN0,1)==0) perror("buzon rcv 4");
-
-                LOMO_espera(oldY,msg.y);
-                sleep(1);
-                }
-
 
             }else{
-                struct mensaje msg;
                 if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_GUARDAPID,1)==0) perror("buzon rcv 2");
                 tren[i].pid=msg.tren;
             }
             }
+                while(1){
+                for(int i=0; i<nTrenes; i++){
+                msg.tipo=TIPO_PETAVANCE;
+                msg.tren = tren[i].ntren;
+                if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT)!=0) perror("buzon snd 3");
+                if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_RESPPETAVANCETREN0+msg.tren,1)==0) perror("buzon rcv 3");
+                int oldY = msg.y;
+
+                msg.tipo=TIPO_AVANCE;
+                if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT)!=0) perror("buzon snd 4");
+                if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_RESPAVANCETREN0+msg.tren,1)==0) perror("buzon rcv 4");
+
+                LOMO_espera(oldY,msg.y);
+                sleep(1);
+                }
+                }
             LOMO_fin();
 		}else{
 			errorHandler();

@@ -84,25 +84,23 @@ int main(int argc, char *argv[]){
                 struct mensaje msg;
                 msg.tipo=TIPO_TRENNUEVO;
                 if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT)!=0) perror("buzon snd 1");
-                if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_RESPTRENNUEVO,1)!=0) perror("buzon rcv 1");
+                if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_RESPTRENNUEVO,1)==0) perror("buzon rcv 1");
                 
                 tren[i].ntren=msg.tren;
-                printf("\n%d\n",tren[i].ntren);
                 msg.tipo=TIPO_GUARDAPID;
                 msg.tren=getpid();
                 if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT)!=0) perror("buzon snd 2");
-                msg.tren = tren[i].ntren;
-
 
                 while(1){
                 msg.tipo=TIPO_PETAVANCE;
+                msg.tren = tren[i].ntren;
                 if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT)!=0) perror("buzon snd 3");
-                if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_RESPPETAVANCETREN0,1)!=0) perror("buzon rcv 3");
-
+                if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_RESPPETAVANCETREN0,1)==0) perror("buzon rcv 3");
                 int oldY = msg.y;
+
                 msg.tipo=TIPO_AVANCE;
-                if( msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT)!=0) perror("buzon snd 4");
-                if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_RESPAVANCETREN0,1)!=0) perror("buzon rcv 4");
+                if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT)!=0) perror("buzon snd 4");
+                if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_RESPAVANCETREN0,1)==0) perror("buzon rcv 4");
 
                 LOMO_espera(oldY,msg.y);
                 sleep(1);
@@ -111,7 +109,7 @@ int main(int argc, char *argv[]){
 
             }else{
                 struct mensaje msg;
-                if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_GUARDAPID,1)!=0) perror("buzon rcv 2");
+                if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_GUARDAPID,1)==0) perror("buzon rcv 2");
                 tren[i].pid=msg.tren;
             }
             }

@@ -12,20 +12,20 @@
 
 #define TIPO_GUARDAPID 400
 #define TIPO_SALIENDO 500
-#define NUMSEMS 3
+//#define NUMSEMS 3
 
 #define LOGIN1 "i6687129"
 #define LOGIN2 "i1080834"
 
 
-int semaforo[NUMSEMS],buzon;
+int semaforo,buzon;
 int nTrenes, pids[100], idTren;
 struct sembuf sops;
-union semun{
+/*union semun{
     int val;
     struct semid_ds *buf;
     __u_short *array;
-};
+};*/
 
 bool esNumero(char number[]){
     		int i = 0;
@@ -44,8 +44,8 @@ void errorHandler(){
 	
 void cierre(int signum){
     LOMO_fin();
-	for(int i=0; i<NUMSEMS; i++){
-		semctl(semaforo[i],0,IPC_RMID);
+	for(int i=0; i<21; i++){
+		semctl(semaforo,i,IPC_RMID);
 	}
 	msgctl(buzon,IPC_RMID,NULL);
     for(int i=0; i<nTrenes; i++){
@@ -58,8 +58,8 @@ void mata(){
     for(int i=0; i<nTrenes; i++){
         kill(pids[i],SIGTERM);
     }
-    for(int i=0; i<NUMSEMS; i++){
-        semctl(semaforo[i],0,IPC_RMID);
+    for(int i=0; i<21; i++){
+        semctl(semaforo,21,IPC_RMID);
 	}
     msgctl(buzon,IPC_RMID,NULL);
 }
@@ -104,30 +104,30 @@ int localiza(int x, int y){
 }
 
 
-int w(int semid, int semnum, int n){
-    sops.sem_op=-n;
+int w(int semid, int semnum){
+    sops.sem_op=-1;
     sops.sem_flg=0;
     sops.sem_num=semnum;
     int waiting = semop(semid,&sops,1); 
     if(waiting==-1){
-        perror("Opercion wait al semaforo error");
+        perror("Operacion wait al semaforo error");
         return -1;
     }
 
     return waiting;
 }
 
-int s(int semid, int semnum, int n){
-    sops.sem_op=n;
+int s(int semid, int semnum){
+    sops.sem_op=1;
     sops.sem_flg=0;
     sops.sem_num=semnum;
-    int waiting = semop(semid,&sops,1); 
-    if(waiting==-1){
-        perror("Opercion signal al semaforo error");
+    int signaled = semop(semid,&sops,1); 
+    if(signaled==-1){
+        perror("Operacion signal al semaforo error");
         return -1;
     }
 
-    return waiting;
+    return signaled;
 }
 
 int main(int argc, char *argv[]){
@@ -144,20 +144,22 @@ int main(int argc, char *argv[]){
                 errorHandler();
             }
 
-            semaforo[0] = semget(IPC_PRIVATE,1,IPC_CREAT | 0600);
+            /*semaforo[0] = semget(IPC_PRIVATE,1,IPC_CREAT | 0600);
             semaforo[2] = semget(IPC_PRIVATE,1,IPC_CREAT | 0600);
             semaforo[1] = semget(IPC_PRIVATE,21,IPC_CREAT | 0600);
-            if(semaforo[0]==-1||semaforo[2]==-1||semaforo[1]==-1) perror("crear semaforo");
+            if(semaforo[0]==-1||semaforo[2]==-1||semaforo[1]==-1) perror("crear semaforo");*/
             for(int i=0; i<21; i++){
-                semctl(semaforo[1],i,SETVAL,1);
+            	semaforo = semget(IPC_PRIVATE,21,IPC_CREAT | 0600);
+                semctl(semaforo,i,SETVAL,1);
+                if(semaforo==-1) perror("crear semaforo");
             }
-            semctl(semaforo[2],1,SETVAL,1);
+            //semctl(semaforo[2],1,SETVAL,1);
 
             buzon = msgget(IPC_PRIVATE,IPC_CREAT | 0600);
             if(buzon==-1) perror("crear buzon");
                 
                 
-            LOMO_inicio(*argv[1],semaforo[0],buzon,LOGIN1,LOGIN2);
+            LOMO_inicio(*argv[1],semaforo,buzon,LOGIN1,LOGIN2);
 
             struct mensaje msg;
             for(int i=0; i<nTrenes; i++){
@@ -185,7 +187,7 @@ int main(int argc, char *argv[]){
 
             int nuevoX, nuevoY, libreX=-1, libreY=-1, viejoLX=0, viejoLY=0;
             while(1){
-                viejoLY=libreY; viejoLX=libreX;
+                //viejoLY=libreY; viejoLX=libreX;
                 msg.tipo=TIPO_PETAVANCE;
                 msg.tren = idTren;
                 if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),0)==-1) perror("buzon snd 3");
@@ -194,21 +196,20 @@ int main(int argc, char *argv[]){
                 nuevoX = msg.x; nuevoY = msg.y;
 
                 int numsem = localiza(nuevoX,nuevoY);
-                if(numsem!=-1) w(semaforo[1], numsem, 1);
+                if(numsem!=-1) w(semaforo, numsem);
 
-                if((libreX==-1 || libreY==-1) && (viejoLX!=-1||viejoLY!=-1)){
+                /*if((libreX==-1 || libreY==-1) && (viejoLX!=-1||viejoLY!=-1)){
                     w(semaforo[2],0,1);
                 }else if((libreX!=-1 || libreY!=-1) && (viejoLX==-1||viejoLY==-1)){
                     s(semaforo[2],0,1);
-                }
+                }*/
 
                 msg.tipo=TIPO_AVANCE;
                 if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT)!=0) perror("buzon snd 4");
                 if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_RESPAVANCETREN0+msg.tren,1)==0) perror("buzon rcv 4");
                 libreX = msg.x; libreY = msg.y;
-                if(localiza(libreX, libreY)==-1 && numsem!=-1){
-                    s(semaforo[1],numsem,1);
-                }
+                numsem = localiza(libreX,libreY);
+                if(numsem!=-1) s(semaforo,numsem);
                 
                 LOMO_espera(nuevoY,libreY);
             }

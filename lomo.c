@@ -148,8 +148,8 @@ int main(int argc, char *argv[]){
             semaforo[2] = semget(IPC_PRIVATE,1,IPC_CREAT | 0600);
             semaforo[1] = semget(IPC_PRIVATE,21,IPC_CREAT | 0600);
             if(semaforo[0]==-1||semaforo[2]==-1||semaforo[1]==-1) perror("crear semaforo");*/
+            semaforo = semget(IPC_PRIVATE,21,IPC_CREAT | 0600);
             for(int i=0; i<21; i++){
-            	semaforo = semget(IPC_PRIVATE,21,IPC_CREAT | 0600);
                 semctl(semaforo,i,SETVAL,1);
                 if(semaforo==-1) perror("crear semaforo");
             }

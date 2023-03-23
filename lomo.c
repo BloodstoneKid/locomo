@@ -66,7 +66,6 @@ void mata(){
 
 int localiza(int x, int y){
 	if(x==0){
-			//if(y==0) return 22;
             		if(y==9) return 11;
             		else if(y==12) return 13;
 			else return -1;
@@ -138,7 +137,6 @@ int main(int argc, char *argv[]){
 	struct sigaction nuevo;
 	nuevo.sa_handler = cierre;
 	if(sigaction(SIGINT,&nuevo,NULL)==-1) perror("sigaction");
-	//int *waitCount = mmap(0,1,PROT_READ | PROT_WRITE,MAP_SHARED | MAP_ANONYMOUS,-1,0);
 
 	if (argc==2 || argc==3){
 		if(!strcmp(argv[1],"--mapa")){
@@ -196,8 +194,6 @@ int main(int argc, char *argv[]){
 
 		if (!iniciado){
                 	w(semaforo, 22);
-                	printf("\nTren %d avanza\n",idTren);
-                	fflush(stdout);
                 	iniciado = true;
                 }
                 numsem = localiza(nuevoX,nuevoY);
@@ -209,6 +205,7 @@ int main(int argc, char *argv[]){
                 libreX = msg.x; libreY = msg.y;
                 numsem2 = localiza(libreX,libreY);
                 if(numsem!=-1) s(semaforo,numsem);
+                if(numsem2==1) s(semaforo,22);
                 
                 LOMO_espera(nuevoY,libreY);
             }

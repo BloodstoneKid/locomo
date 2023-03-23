@@ -5,21 +5,28 @@
 #include <string.h>
 #include <sys/sem.h>
 #include <sys/msg.h>
+#include <sys/shm.h>
 #include <sys/signal.h>
 #include <signal.h>
 #include <sys/unistd.h>
 #include <sys/mman.h>
+#include <errno.h>
 #include "lomo.h"
 
 #define TIPO_GUARDAPID 400
-#define TIPO_SALIENDO 500
+#define TIPO_AGUARDANDO 500
 
 #define LOGIN1 "i6687129"
 #define LOGIN2 "i1080834"
 
 
-int semaforo[2],buzon;
+int semaforo[2],buzon,shm;
 int nTrenes, pids[101], idTren=-1;
+
+typedef struct colas{
+   int x, y; 
+}colas;
+
 struct sembuf sops;
 union semun{
     int val;
@@ -51,6 +58,8 @@ void cierre(int signum){
     for(int i=1; i<=nTrenes; i++){
         kill(pids[i],SIGTERM);
     }
+    shmdt(0);
+    shmctl(shm,IPC_RMID,NULL);
     printf("Cerrados");
 }	
 
@@ -62,6 +71,8 @@ void mata(){
         semctl(semaforo[i],0,IPC_RMID);
 	}
     msgctl(buzon,IPC_RMID,NULL);
+    shmdt(0);
+    shmctl(shm,IPC_RMID,NULL);
 }
 
 int localiza(int x, int y){
@@ -107,6 +118,7 @@ int localiza(int x, int y){
 }
 
 
+
 int w(int semid, int semnum){
     sops.sem_op=-1;
     sops.sem_flg=0;
@@ -147,19 +159,25 @@ int main(int argc, char *argv[]){
                 errorHandler();
             }
 
+            colas cola[nTrenes];
+            colas *pshm=cola;
+
             semaforo[0] = semget(IPC_PRIVATE,1,IPC_CREAT | 0600);
             semaforo[1] = semget(IPC_PRIVATE,23,IPC_CREAT | 0600);
             if(semaforo[0]==-1||semaforo[1]==-1) perror("crear semaforo");
             for(int i=0; i<23; i++){
                 if(semctl(semaforo[1],i,SETVAL,1)==-1) perror("setval");
             }
+            if(semctl(semaforo[1],21,SETVAL,0)==-1) perror("setval");
 
             buzon = msgget(IPC_PRIVATE,IPC_CREAT | 0600);
             if(buzon==-1) perror("crear buzon");
-                
+            shm=shmget(IPC_PRIVATE,nTrenes*sizeof(cola),IPC_CREAT | 0600);
+            if(shm==-1) perror("shm");
+            pshm = shmat(shm,0,SHM_RDONLY);
                 
             LOMO_inicio(*argv[1],semaforo[0],buzon,LOGIN1,LOGIN2);
-
+            
 
             pids[0]=getpid();
             struct mensaje msg;
@@ -187,14 +205,30 @@ CONT:
             if(msgrcv(buzon,&msg,sizeof(msg),TIPO_RESPTRENNUEVO,1)==-1) perror("buzon rcv 1");
             idTren=msg.tren;
 
-            int nuevoX, nuevoY, libreX, libreY,numsem,numsem2;
-            bool iniciado = false;
+            int nuevoX, nuevoY, libreX, libreY,antX,antY,numsem,numsem2,aux;
+            bool iniciado = false, enCurso = false;
+            
             while(1){
+                if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_AGUARDANDO+idTren,IPC_NOWAIT)==-1){
+                    if(errno!=ENOMSG){
+                        perror("msgrcv 5");
+                    }
+                }
+                
                 msg.tipo=TIPO_PETAVANCE;
                 msg.tren = idTren;
                 if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),0)==-1) perror("buzon snd 3");
                 if(msgrcv(buzon,&msg,sizeof(msg),TIPO_RESPPETAVANCETREN0+msg.tren,1)==-1) perror("buzon rcv 3");
                 nuevoX = msg.x; nuevoY = msg.y;
+                for(int i=0;i<nTrenes;i++){
+                    if(nuevoX==pshm[i].x&&nuevoY==pshm[i].y){
+                        msg.tipo=TIPO_AGUARDANDO+i;
+                        printf("\nMessage aguardo");
+                        fflush(stdout);
+                        if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),0)==-1) perror("msgsnd 5");
+                        w(semaforo[1],21);
+                    }
+                }
 
                 if (!iniciado){
                 	w(semaforo[1], 22);
@@ -204,14 +238,31 @@ CONT:
                 if(numsem!=-1) w(semaforo[1], numsem);
 
                 msg.tipo=TIPO_AVANCE;
-                if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT)!=0) perror("buzon snd 4");
-                if(msgrcv(buzon,&msg,sizeof(msg),TIPO_RESPAVANCETREN0+msg.tren,1)==0) perror("buzon rcv 4");
+                if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),0)==-1) perror("buzon snd 4");
+                if(msgrcv(buzon,&msg,sizeof(msg),TIPO_RESPAVANCETREN0+msg.tren,1)==-1) perror("buzon rcv 4");
+                antX=libreX; antY=libreY;
                 libreX = msg.x; libreY = msg.y;
                 numsem2 = localiza(libreX,libreY);
-                if(numsem!=-1) s(semaforo[1],numsem);
-                if(numsem2==1) s(semaforo[1],22);
+                printf("%d",numsem2);
+                fflush(stdout);
+                if(numsem2!=-1) s(semaforo[1],numsem);
+                
+                if(!enCurso){
+                    if(libreX!=-1&&libreY!=-1){
+                        if(antX==-1&&antY==-1){
+                            s(semaforo[1],22);
+                            enCurso=true;
+                        }
+                    }
+                }
+                 
+                if(msg.tipo==TIPO_AGUARDANDO+idTren){
+                    s(semaforo[1],21);
+                }
                 
                 LOMO_espera(nuevoY,libreY);
+                
+                pshm[idTren].x=libreX; pshm[idTren].y=libreY;
             }
             LOMO_fin();
 		}else{

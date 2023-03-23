@@ -13,7 +13,6 @@
 
 #define TIPO_GUARDAPID 400
 #define TIPO_SALIENDO 500
-//#define NUMSEMS 3
 
 #define LOGIN1 "i6687129"
 #define LOGIN2 "i1080834"
@@ -45,7 +44,7 @@ void errorHandler(){
 	
 void cierre(int signum){
     LOMO_fin();
-	for(int i=0; i<22; i++){
+	for(int i=0; i<23; i++){
 		semctl(semaforo,i,IPC_RMID);
 	}
 	msgctl(buzon,IPC_RMID,NULL);
@@ -59,16 +58,16 @@ void mata(){
     for(int i=0; i<nTrenes; i++){
         kill(pids[i],SIGTERM);
     }
-    for(int i=0; i<22; i++){
-        semctl(semaforo,22,IPC_RMID);
+    for(int i=0; i<23; i++){
+        semctl(semaforo,i,IPC_RMID);
 	}
     msgctl(buzon,IPC_RMID,NULL);
 }
 
 int localiza(int x, int y){
 	if(x==0){
-			if(y==0) return 22;
-            		else if(y==9) return 11;
+			//if(y==0) return 22;
+            		if(y==9) return 11;
             		else if(y==12) return 13;
 			else return -1;
 		}
@@ -139,7 +138,7 @@ int main(int argc, char *argv[]){
 	struct sigaction nuevo;
 	nuevo.sa_handler = cierre;
 	if(sigaction(SIGINT,&nuevo,NULL)==-1) perror("sigaction");
-	int *waitCount = mmap(0,1,PROT_READ | PROT_WRITE,MAP_SHARED | MAP_ANONYMOUS,-1,0);
+	//int *waitCount = mmap(0,1,PROT_READ | PROT_WRITE,MAP_SHARED | MAP_ANONYMOUS,-1,0);
 
 	if (argc==2 || argc==3){
 		if(!strcmp(argv[1],"--mapa")){
@@ -150,8 +149,8 @@ int main(int argc, char *argv[]){
                 errorHandler();
             }
 
-            semaforo = semget(IPC_PRIVATE,22,IPC_CREAT | 0600);
-            for(int i=0; i<22; i++){
+            semaforo = semget(IPC_PRIVATE,23,IPC_CREAT | 0600);
+            for(int i=0; i<23; i++){
                 semctl(semaforo,i,SETVAL,1);
                 if(semaforo==-1) perror("crear semaforo");
             }
@@ -187,14 +186,20 @@ int main(int argc, char *argv[]){
             }
 
             int nuevoX, nuevoY, libreX, libreY,numsem,numsem2;
+            bool iniciado = false;
             while(1){
                 msg.tipo=TIPO_PETAVANCE;
                 msg.tren = idTren;
                 if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),0)==-1) perror("buzon snd 3");
                 if(msgrcv(buzon,&msg,sizeof(msg),TIPO_RESPPETAVANCETREN0+msg.tren,1)==-1) perror("buzon rcv 3");
-                
                 nuevoX = msg.x; nuevoY = msg.y;
 
+		if (!iniciado){
+                	w(semaforo, 22);
+                	printf("\nTren %d avanza\n",idTren);
+                	fflush(stdout);
+                	iniciado = true;
+                }
                 numsem = localiza(nuevoX,nuevoY);
                 if(numsem!=-1) w(semaforo, numsem);
 

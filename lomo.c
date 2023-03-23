@@ -19,7 +19,7 @@
 
 
 int semaforo[2],buzon;
-int nTrenes, pids[100], idTren;
+int nTrenes, pids[101], idTren=-1;
 struct sembuf sops;
 union semun{
     int val;
@@ -48,14 +48,14 @@ void cierre(int signum){
 		semctl(semaforo[i],0,IPC_RMID);
 	}
 	msgctl(buzon,IPC_RMID,NULL);
-    for(int i=0; i<nTrenes; i++){
+    for(int i=1; i<=nTrenes; i++){
         kill(pids[i],SIGTERM);
     }
     printf("Cerrados");
 }	
 
 void mata(){
-    for(int i=0; i<nTrenes; i++){
+    for(int i=1; i<=nTrenes; i++){
         kill(pids[i],SIGTERM);
     }
     for(int i=0; i<2; i++){
@@ -160,29 +160,32 @@ int main(int argc, char *argv[]){
                 
             LOMO_inicio(*argv[1],semaforo[0],buzon,LOGIN1,LOGIN2);
 
+
+            pids[0]=getpid();
             struct mensaje msg;
-            for(int i=0; i<nTrenes; i++){
+            for(int i=0; i<nTrenes-1; i++){
                 switch(fork()){
                     case 0:
-                        msg.tipo=TIPO_TRENNUEVO;
-                        if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),0)==-1) perror("buzon snd 1");
-                        if(msgrcv(buzon,&msg,sizeof(msg),TIPO_RESPTRENNUEVO,1)==-1) perror("buzon rcv 1");
-                        
-                        idTren=msg.tren;
                         msg.tipo=TIPO_GUARDAPID;
                         msg.tren=getpid();
                         if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),0)==-1) perror("buzon snd 2");
-                        break;
+                        goto CONT; 
 
                     case -1:
                         perror("fork");
 
                     default:
                         if(msgrcv(buzon,&msg,sizeof(msg),TIPO_GUARDAPID,1)==-1) perror("buzon rcv 2");
-                        pids[i]=msg.tren;
-                        break;
+                        pids[i+1]=msg.tren;
                 }
             }
+            
+CONT:
+
+            msg.tipo=TIPO_TRENNUEVO;
+            if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),0)==-1) perror("buzon snd 1");
+            if(msgrcv(buzon,&msg,sizeof(msg),TIPO_RESPTRENNUEVO,1)==-1) perror("buzon rcv 1");
+            idTren=msg.tren;
 
             int nuevoX, nuevoY, libreX, libreY,numsem,numsem2;
             bool iniciado = false;
@@ -193,7 +196,7 @@ int main(int argc, char *argv[]){
                 if(msgrcv(buzon,&msg,sizeof(msg),TIPO_RESPPETAVANCETREN0+msg.tren,1)==-1) perror("buzon rcv 3");
                 nuevoX = msg.x; nuevoY = msg.y;
 
-		if (!iniciado){
+                if (!iniciado){
                 	w(semaforo[1], 22);
                 	iniciado = true;
                 }

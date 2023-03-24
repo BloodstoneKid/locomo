@@ -21,12 +21,14 @@
 #define LOGIN2 "i1080834"
 
 
-int semaforo[2],buzon,shm;
+int semaforo[3],buzon,shm;
 int nTrenes, pids[101], idTren=-1;
 
 typedef struct colas{
    int x, y; 
 }colas;
+
+colas *cola;
 
 struct sembuf sops;
 union semun{
@@ -52,7 +54,7 @@ void errorHandler(){
 	
 void cierre(int signum){
     LOMO_fin();
-	for(int i=0; i<2; i++){
+	for(int i=0; i<3; i++){
 		semctl(semaforo[i],0,IPC_RMID);
 	}
 	msgctl(buzon,IPC_RMID,NULL);
@@ -61,6 +63,7 @@ void cierre(int signum){
     }
     shmdt(0);
     shmctl(shm,IPC_RMID,NULL);
+    shmdt((void *) cola);
     printf("Cerrados");
 }	
 
@@ -68,12 +71,13 @@ void mata(){
     for(int i=1; i<=nTrenes; i++){
         kill(pids[i],SIGTERM);
     }
-    for(int i=0; i<2; i++){
+    for(int i=0; i<3; i++){
         semctl(semaforo[i],0,IPC_RMID);
 	}
     msgctl(buzon,IPC_RMID,NULL);
     shmdt(0);
     shmctl(shm,IPC_RMID,NULL);
+    shmdt((void *) cola);
 }
 
 int localiza(int x, int y){
@@ -160,11 +164,11 @@ int main(int argc, char *argv[]){
                 errorHandler();
             }
 
-            colas cola[nTrenes];
-            colas *pshm;
+            //colas cola[nTrenes];
 
             semaforo[0] = semget(IPC_PRIVATE,1,IPC_CREAT | 0600);
             semaforo[1] = semget(IPC_PRIVATE,24,IPC_CREAT | 0600);
+            semaforo[2] = semget(IPC_PRIVATE,nTrenes+1,IPC_CREAT | 0600);
             if(semaforo[0]==-1||semaforo[1]==-1) perror("crear semaforo");
             for(int i=0; i<23; i++){
                 if(semctl(semaforo[1],i,SETVAL,1)==-1) perror("setval");
@@ -173,10 +177,9 @@ int main(int argc, char *argv[]){
 
             buzon = msgget(IPC_PRIVATE,IPC_CREAT | 0600);
             if(buzon==-1) perror("crear buzon");
-            shm=shmget(IPC_PRIVATE,nTrenes*sizeof(cola),IPC_CREAT | 0600);
+            shm=shmget(IPC_PRIVATE,nTrenes*sizeof(colas),IPC_CREAT | 0600);
             if(shm==-1) perror("shm");
-            pshm = shmat(shm,0,SHM_RDONLY);
-            pshm=cola;
+            cola = shmat(shm,0,SHM_RDONLY);
                 
             LOMO_inicio(*argv[1],semaforo[0],buzon,LOGIN1,LOGIN2);
             
@@ -208,7 +211,7 @@ CONT:
 
             int nuevoX, nuevoY, libreX, libreY,antX,antY,numsem,numsem2,allId;
             bool iniciado = false, enCurso = false;
-            allId=(nTrenes-1)*nTrenes/2;
+            //allId=(nTrenes-1)*nTrenes/2;
             
             while(1){
                 if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_AGUARDANDO+idTren,IPC_NOWAIT)==-1){
@@ -224,18 +227,20 @@ CONT:
                 nuevoX = msg.x; nuevoY = msg.y;
 
                 if(enCurso){
-                    printf("\nMessage aguardo");
+                    /*printf("\nMessage aguardo 1");
                     fflush(stdout);
                     if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_RECIBECOLA+allId-idTren,0)==-1){
                             perror("msgrcv 5");
-                    }
+                    }*/
                     for(int i=0;i<nTrenes;i++){
-                        if(nuevoX==pshm[i].x&&nuevoY==pshm[i].y){
-                            msg.tipo=TIPO_AGUARDANDO+i;
-                            printf("\nMessage aguardo");
+                        if(nuevoX==cola[i].x&&nuevoY==cola[i].y){
+                            printf("\nMessage aguardo 2");
                             fflush(stdout);
-                            if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),0)==-1) perror("msgsnd 5");
-                            w(semaforo[1],21);
+                            w(semaforo[2],i);
+                            int espera;
+                            while(espera<5){
+                            	espera++;
+                            }
                         }
                     }
                 }
@@ -253,8 +258,6 @@ CONT:
                 antX=libreX; antY=libreY;
                 libreX = msg.x; libreY = msg.y;
                 numsem2 = localiza(libreX,libreY);
-                printf("%d",numsem2);
-                fflush(stdout);
                 if(numsem2!=-1) s(semaforo[1],numsem2);
                 
                 if(!enCurso){
@@ -264,13 +267,14 @@ CONT:
                     }
                 }
                  
-                if(msg.tipo==TIPO_AGUARDANDO+idTren){
+                /*if(msg.tipo==TIPO_AGUARDANDO+idTren){
                     s(semaforo[1],21);
-                }
-                
-                pshm[idTren].x=libreX; pshm[idTren].y=libreY;
-                msg.tipo=TIPO_RECIBECOLA+idTren;
-                if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),1)==-1) perror("msgsnd 6");
+                }*/
+                cola[idTren].x=antX; cola[idTren].y=antY;
+                printf("Test\n");
+                s(semaforo[2],idTren);
+                /*msg.tipo=TIPO_RECIBECOLA+idTren;
+                if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),1)==-1) perror("msgsnd 6");*/
                 LOMO_espera(nuevoY,libreY);
                 
             }

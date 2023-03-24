@@ -174,7 +174,7 @@ int main(int argc, char *argv[]){
                 if(semctl(semaforo[1],i,SETVAL,1)==-1) perror("setval");
             }
             for(int i=0; i<nTrenes+1; i++){
-                if(semctl(semaforo[2],i,SETVAL,1)==-1) perror("setval");
+                if(semctl(semaforo[2],i,SETVAL,0)==-1) perror("setval");
             }
             if(semctl(semaforo[1],21,SETVAL,0)==-1) perror("setval");
 
@@ -223,15 +223,15 @@ CONT:
             idTren=msg.tren;
 
             int nuevoX, nuevoY, libreX, libreY,antX,antY,numsem,numsem2;
-            bool iniciado = false, enCurso = false;
-            printf("%d",*psalidos);
-            fflush(stdout);
+            bool iniciado = false, enCurso = false, abrirs=false;
 
             while(1){
                 if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_AGUARDANDO+idTren,IPC_NOWAIT)==-1){
                     if(errno!=ENOMSG){
                         perror("msgrcv 5");
                     }
+                }else{
+                    abrirs=true;
                 }
                 
                 msg.tipo=TIPO_PETAVANCE;
@@ -240,17 +240,6 @@ CONT:
                 if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_RESPPETAVANCETREN0+msg.tren,1)==-1) perror("buzon rcv 3");
                 nuevoX = msg.x; nuevoY = msg.y;
 
-                if(*psalidos>=1){
-                    for(int i=0;i<nTrenes;i++){
-                        if(nuevoX==pcolas[i].x&&nuevoY==pcolas[i].y){
-                            msg.tipo=TIPO_AGUARDANDO+i;
-                            printf("\nMessage aguardo");
-                            fflush(stdout);
-                            if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),0)==-1) perror("msgsnd 5");
-                            w(semaforo[2],i);
-                        }
-                    }
-                }
 
                 if (!iniciado){
                 	w(semaforo[1], 22);
@@ -259,14 +248,21 @@ CONT:
                 numsem = localiza(nuevoX,nuevoY);
                 if(numsem!=-1) w(semaforo[1], numsem);
 
+                if(*psalidos>=1){
+                    for(int i=0;i<nTrenes;i++){
+                        if(nuevoX==pcolas[i].x&&nuevoY==pcolas[i].y){
+                            msg.tipo=TIPO_AGUARDANDO+i;
+                            if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),0)==-1) perror("msgsnd 5");
+                            w(semaforo[2],i);
+                        }
+                    }
+                }
                 msg.tipo=TIPO_AVANCE;
                 if(msgsnd(buzon,&msg,sizeof(msg)-sizeof(long),0)==-1) perror("buzon snd 4");
                 if(msgrcv(buzon,&msg,sizeof(msg)-sizeof(long),TIPO_RESPAVANCETREN0+msg.tren,1)==-1) perror("buzon rcv 4");
                 antX=libreX; antY=libreY;
                 libreX = msg.x; libreY = msg.y;
                 numsem2 = localiza(libreX,libreY);
-                printf("%d",numsem2);
-                fflush(stdout);
                 if(numsem2!=-1) s(semaforo[1],numsem2);
                 
                 if(!enCurso){
@@ -277,8 +273,9 @@ CONT:
                     }
                 }
                  
-                if(msg.tipo==TIPO_AGUARDANDO+idTren){
+                if(abrirs){
                     s(semaforo[2],idTren);
+                    abrirs=false;
                 }
                 
                 pcolas[idTren].x=libreX; pcolas[idTren].y=libreY;

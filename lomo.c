@@ -20,11 +20,15 @@
 #define LOGIN1 "i6687129"
 #define LOGIN2 "i1080834"
 
+typedef struct cola{
+    int x;
+    int y;
+}cola;
 
-int semaforo[3],buzon,shmx[101],shmy[101],shmint;
+int semaforo[3],buzon,shmstruct,shmint;
 int nTrenes, pids[101], idTren=-1;
-int * x[101],*y[101];
 int * psalidos;
+cola * pcolas;
 
 struct sembuf sops;
 union semun{
@@ -59,12 +63,8 @@ void cierre(int signum){
     }
     shmdt(psalidos);
     shmctl(shmint,IPC_RMID,NULL);
-    for(int i=0; i<nTrenes;i++){
-        shmdt(x[i]);
-        shmdt(y[i]);
-        shmctl(shmx[i],IPC_RMID,NULL);
-        shmctl(shmy[i],IPC_RMID,NULL);
-    }
+    shmdt(pcolas);
+    shmctl(shmstruct,IPC_RMID,NULL);
     printf("Cerrados");
 }	
 
@@ -78,12 +78,8 @@ void mata(){
     msgctl(buzon,IPC_RMID,NULL);
     shmdt(psalidos);
     shmctl(shmint,IPC_RMID,NULL);
-    for(int i=0; i<nTrenes;i++){
-        shmdt(x[i]);
-        shmdt(y[i]);
-        shmctl(shmx[i],IPC_RMID,NULL);
-        shmctl(shmy[i],IPC_RMID,NULL);
-    }
+    shmdt(pcolas);
+    shmctl(shmstruct,IPC_RMID,NULL);
 }
 
 int localiza(int x, int y){
@@ -186,19 +182,18 @@ int main(int argc, char *argv[]){
             if(buzon==-1) perror("crear buzon");
             shmint=shmget(IPC_PRIVATE,sizeof(int),IPC_CREAT | 0600);
             if(shmint==-1){ perror("shmget");}
-            psalidos = shmat(shmint,0,SHM_RDONLY);
+            shmstruct=shmget(IPC_PRIVATE,sizeof(cola)*nTrenes,IPC_CREAT | 0600);
+            if(shmstruct==-1){ perror("shmget");}
+            psalidos = shmat(shmint,NULL,0);
             if(psalidos==(int *)(-1)){ perror("shmat"); }
-            for(int i=0; i<nTrenes; i++){
-                shmx[i]=shmget(IPC_PRIVATE,sizeof(int),IPC_CREAT|0600);
-                if(shmx[i]==-1){ perror("shmget");}
-                shmy[i]=shmget(IPC_PRIVATE,sizeof(int),IPC_CREAT|0600);
-                if(shmy[i]==-1){ perror("shmget");}
-                x[i]=shmat(shmx[i],0,0); 
-                if(x[i]==(int *)(-1)){ perror("shmat"); }
-                y[i]=shmat(shmy[i],0,0); 
-                if(y[i]==(int *)(-1)){ perror("shmat"); }
-            }
+            pcolas = shmat(shmstruct,NULL,0);
+            if(pcolas==(cola *)(-1)){ perror("shmat"); }
                 
+            *psalidos=0;
+            for(int i=0; i<nTrenes; i++){
+                pcolas[i].x=-1;
+                pcolas[i].y=-1;
+            }
             LOMO_inicio(*argv[1],semaforo[0],buzon,LOGIN1,LOGIN2);
             
 
@@ -229,7 +224,6 @@ CONT:
 
             int nuevoX, nuevoY, libreX, libreY,antX,antY,numsem,numsem2;
             bool iniciado = false, enCurso = false;
-            *psalidos=0;
             printf("%d",*psalidos);
             fflush(stdout);
 
@@ -248,7 +242,7 @@ CONT:
 
                 if(*psalidos>=1){
                     for(int i=0;i<nTrenes;i++){
-                        if(nuevoX==*x[i]&&nuevoY==*y[i]){
+                        if(nuevoX==pcolas[i].x&&nuevoY==pcolas[i].y){
                             msg.tipo=TIPO_AGUARDANDO+i;
                             printf("\nMessage aguardo");
                             fflush(stdout);
@@ -287,7 +281,7 @@ CONT:
                     s(semaforo[2],idTren);
                 }
                 
-                *x[idTren]=libreX; *y[idTren]=libreY;
+                pcolas[idTren].x=libreX; pcolas[idTren].y=libreY;
                 LOMO_espera(nuevoY,libreY);
                 
             }
